@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<title>Better Latitude</title>
+		<!--css inclusion-->
+		<link href="index.css" rel="stylesheet" type="text/css" title="defaut" />
+		<!--font inclusion-->
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css" />
+		<!--js inclusion-->
+		<script type="text/javascript" src="extension.js"></script>
+		<script type="text/javascript" src="browser_extension.js"></script>
+		<script type="text/javascript" src="queue.js"></script>
+		<script type="text/javascript" src="record.js"></script>
+		<script type="text/javascript" src="index.js"></script>
+		<script src="https://apis.google.com/js/client.js"></script>
+		<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtRFkNDl7AbRy2FvgLQNEWtv6kCctfwR0&sensor=false&libraries=visualization"></script>
+		<script type="text/javascript" src="https://google-maps-utility-library-v3.googlecode.com/svn/trunk/infobox/src/infobox.js"></script>
+	</head>
+	<body>
+		<div id="fragments">
+			<form id="add_record_info" class="infobox">
+				<img id="add_record_close" src="delete.png" alt="Close" title="Close" />
+				<h2>Add record</h2>
+				<div>
+					<input type="text" name="datetime" required="required" placeholder="dd.mm.yyyy hh:mm" />
+					<button>Add</button>
+				</div>
+			</form>
+
+			<div id="record_info" class="infobox">
+				<img id="record_info_close" src="delete.png" alt="Close" title="Close" />
+				<h2>Record</h2>
+				<h3>
+					<img id="record_info_previous" src="arrow_left.png" alt="Previous record" title="Previous record" />
+					<img id="record_info_next" src="arrow_right.png" alt="Next record" title="Next record" />
+					<span id="record_info_multiple">There is <span id="record_info_number" style="vertical-align: top;"></span> records at the same location</span>
+					<span id="record_info_date"></span>
+				</h3>
+				<div>
+					<p>
+						<span id="record_info_travel_form"></span>
+						<br />
+						<span id="record_info_distance_from_departure"></span>
+						<br />
+						<span id="record_info_time_from_departure"></span>
+					</p>
+					<p>
+						<button id="record_info_delete" title="Delete this record">I wasn't here</button>
+						<button id="record_info_delete_all" title="Delete all records at this location" style="margin-left: 10px;">I've never been here</button>
+					</p>
+				</div>
+			</div>
+
+			<table id="template_stats_figures">
+				<tr>
+					<td style="width: 150px;">Total distance</td>
+					<td style="min-width: 100px;" data-content="total_distance"></td>
+				</tr>
+				<tr>
+					<td>Farthest distance</td>
+					<td data-content="max_distance"></td>
+				</tr>
+				<tr>
+					<td>Maximum speed</td>
+					<td data-content="max_speed"></td>
+				</tr>
+				<tr>
+					<td>Time stationary</td>
+					<td data-content="total_distance_stationary"></td>
+				</tr>
+				<tr>
+					<td>Time walking</td>
+					<td data-content="total_distance_walking"></td>
+				</tr>
+				<tr>
+					<td>Time motorized</td>
+					<td data-content="total_distance_motorized"></td>
+				</tr>
+			</table>
+		</div>
+
+		<div id="info" class="message"></div>
+		<div id="error" class="message"></div>
+		<div id="loading" class="message">Loading</div>
+
+		<div id="validate" class="modal">
+			<h2>Validate</h2>
+			<p id="validate_message"></p>
+		</div>
+
+		<div id="authorization" class="modal">
+			<h2>Authorize access</h2>
+			<div>
+				<p>This app helps you to manage your Google Latitude history.</p>
+				<p>Therefore, it requires an access to your Google Latitude data.</p>
+				<p>This app is written in pure HTML. There is no code on the server side neither database. Your data won't go anywhere else than in your browser.</p>
+			</div>
+			<menu>
+				<button id="authorize" class="important">Authorize</button>
+			</menu>
+		</div>
+
+		<div id="about" class="modal">
+			<h2>About<img id="about_close" src="delete.png" class="close" alt="Close" title="Close" /></h2>
+			<div>
+				<p>Developped by Matthieu Corageoud. <a href="https://www.matco.name">My website</a> - <a href="https://plus.google.com/u/0/114622814110487825622">My Google profile</a></p>
+				<p>Using <a href="extension.js">extensions.js</a>, an extension of the JavaScript language, <a href="browser_extension.js">browser_extension</a>, an extension of the JavaScript for DOM and <a href="queue.js">queue.js</a>, a tool to manage a queue of asynchronous tasks</p>
+			</div>
+		</div>
+
+		<div id="stats" class="modal biggest">
+			<h2>Stats<img id="stats_close" src="delete.png" class="close" alt="Close" title="Close" /></h2>
+			<div>
+				<p>
+					To display the heatmap, the application must retrieve a large set of records from Google servers. By browsing your history, you already have <span id="local_records_number"></span> local records <span id="local_records_info">(from <span id="local_records_min_date"></span> to <span id="local_records_max_date"></span>)</span>.
+					<br />
+					<button id="stats_fetch_records">Fetch records</button><span id="stats_fetching_records" style="display: none;">Fetching records</span>
+				</p>
+				<p>
+					You can do a fresh start by deleting all records stored locally (this will only delete records cached locally in your browser). This is useful if you manage your Latitude history though an other application.
+					<br />
+					<button id="stats_clear_all_records" class="important">Clear local history</button>
+				</p>
+				<p>
+					Once you think you have enough data, you can draw the heatmap. For now heatmap is based on location records number and not on the time spent on each location.
+					<br />
+					<button id="heatmap_go">Let's go</button><button id="stats_go">Let's go</button>
+				</p>
+				<div id="stats_figures"></div>
+			</div>
+		</div>
+
+		<header>
+			<div class="left">Better Latitude</div>
+			<div class="middle">
+				<img id="previous_day" src="arrow_left.png" title="Previous day" alt="Previous day" />
+				<span id="current_date" class="unfoldable"></span>
+				<img id="next_day" src="arrow_right.png" title="Next day" alt="Next day" />
+			</div>
+			<div class="right">
+				<button id="pan" title="Pan map to selected records">Pan map</button>
+				<button id="add" title="Not available yet" style="display: none;">Add record</button>
+				<button id="details_button" class="unfoldable" title="Show more informations with selected day records">Details</button>
+				<button id="stats_button" title="Show stats">Stats</button>
+				<button id="geolocalize">Geolocalize</button>
+				<button id="about_button">About</button>
+			</div>
+		</header>
+
+		<div id="details" class="overlap">
+			<h2>Details</h2>
+			<svg id="details_graph"></svg>
+			<div id="details_stats"></div>
+		</div>
+
+		<div id="date" class="overlap">
+			<h2>Change date</h2>
+			<div>
+				<form id="date_picker">
+					<input type="text" name="date" required="required" placeholder="dd.mm.yyyy" />
+					<button>Let's go</button>
+				</form>
+				<div>
+					or <button id="today">Show today</button>
+				</div>
+			</div>
+		</div>
+
+		<div id="map"></div>
+	</body>
+</html>
